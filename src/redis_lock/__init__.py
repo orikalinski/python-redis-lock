@@ -8,7 +8,7 @@ from queue import SimpleQueue
 
 from redis import StrictRedis
 
-__version__ = '3.7.0.2'
+__version__ = '3.7.0.3'
 
 from redis_lock.decorators import handle_redis_exception, wrap_all_class_methods
 
@@ -90,6 +90,7 @@ class NotExpirable(RuntimeError):
 
 lock_to_extend_time = dict()
 add_lock_extend_queue = SimpleQueue()
+lock_thread = None
 
 
 def safe_extend_lock_time(lock):
@@ -151,7 +152,9 @@ def start_locking_thread_if_needed(first_time=False):
         lock_thread.daemon = True
         lock_thread.start()
 
+
 start_locking_thread_if_needed(first_time=True)
+
 
 class Lock(object):
     """
