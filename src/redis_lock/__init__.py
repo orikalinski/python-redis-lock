@@ -8,7 +8,7 @@ from queue import SimpleQueue
 
 from redis import StrictRedis
 
-__version__ = '3.7.0.1'
+__version__ = '3.7.0.2'
 
 from redis_lock.decorators import handle_redis_exception, wrap_all_class_methods
 
@@ -141,13 +141,17 @@ def handle_locks_extending():
             logger.exception("Got exception on handle_locks_extending %s", e)
 
 
-def start_locking_thread_if_needed():
+def start_locking_thread_if_needed(first_time=False):
     global lock_thread
     if not lock_thread or not lock_thread.is_alive():
+        if not first_time:
+            logger = loggers["refresh.thread"]
+            logger.error("Starting new thread to handle locks extending (the previous one died?)")
         lock_thread = threading.Thread(target=handle_locks_extending)
         lock_thread.daemon = True
         lock_thread.start()
 
+start_locking_thread_if_needed(first_time=True)
 
 class Lock(object):
     """
@@ -231,10 +235,6 @@ class Lock(object):
         cls.unlock_script = redis_client.register_script(UNLOCK_SCRIPT)
         cls.extend_script = redis_client.register_script(EXTEND_SCRIPT)
 
-    @property
-    def _held(self):
-        return self.id == self.get_owner_id()
-
     def reset(self):
         """
         Forcibly deletes the lock. Use this with care.
@@ -244,12 +244,6 @@ class Lock(object):
     @property
     def id(self):
         return self._id
-
-    def get_owner_id(self):
-        owner_id = self.redis_class.conn.get(self._name)
-        if isinstance(owner_id, binary_type):
-            owner_id = owner_id.decode('ascii', 'replace')
-        return owner_id
 
     @handle_redis_exception
     def acquire(self):
@@ -263,7 +257,7 @@ class Lock(object):
 
         logger.debug("Getting %r ...", self._name)
 
-        if self._held:
+        if self.is_locked:
             raise AlreadyAcquired("Already acquired from this Lock instance.")
 
         is_locked = not self.redis_class.conn.set(self._name, self._id, nx=True, ex=self._expire)
