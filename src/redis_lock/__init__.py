@@ -8,7 +8,7 @@ from queue import SimpleQueue
 
 from redis import StrictRedis
 
-__version__ = '3.7.0'
+__version__ = '3.7.0.1'
 
 from redis_lock.decorators import handle_redis_exception, wrap_all_class_methods
 
@@ -114,7 +114,7 @@ def extend_locks(logger):
                     to_remove_locks.append(lock)
             except NotAcquired as e:
                 if lock.lock_renewal_interval:
-                    logger.error("Got NotAcquired on extend while renewal is still active %s", e)
+                    logger.exception("Got NotAcquired on extend while renewal is still active %s", e)
                 to_remove_locks.append(lock)
             except Exception as e:
                 logger.exception("Got exception on extend %s", e)
@@ -122,7 +122,7 @@ def extend_locks(logger):
     return to_remove_locks
 
 
-def start_locking_thread():
+def handle_locks_extending():
     logger = loggers["refresh.thread"]
     while True:
         try:
@@ -138,12 +138,15 @@ def start_locking_thread():
 
             time.sleep(0.5)
         except Exception as e:
-            logger.exception("Got exception on start_locking_thread iter %s", e)
+            logger.exception("Got exception on handle_locks_extending %s", e)
 
 
-lock_thread = threading.Thread(target=start_locking_thread)
-lock_thread.daemon = True
-lock_thread.start()
+def start_locking_thread_if_needed():
+    global lock_thread
+    if not lock_thread or not lock_thread.is_alive():
+        lock_thread = threading.Thread(target=handle_locks_extending)
+        lock_thread.daemon = True
+        lock_thread.start()
 
 
 class Lock(object):
@@ -212,6 +215,8 @@ class Lock(object):
 
         self.register_scripts(self.redis_class.conn)
         self.is_locked = False
+
+        start_locking_thread_if_needed()
 
     def get_renewal_interval(self, auto_renewal):
         if not auto_renewal:
