@@ -91,6 +91,7 @@ class NotExpirable(RuntimeError):
 lock_to_extend_time = dict()
 add_lock_extend_queue = SimpleQueue()
 lock_thread = None
+scripts_registered = False
 
 
 def safe_extend_lock_time(lock):
@@ -235,8 +236,11 @@ class Lock(object):
     @classmethod
     @handle_redis_exception
     def register_scripts(cls, redis_client):
-        cls.unlock_script = redis_client.register_script(UNLOCK_SCRIPT)
-        cls.extend_script = redis_client.register_script(EXTEND_SCRIPT)
+        global scripts_registered
+        if not scripts_registered:
+            cls.unlock_script = redis_client.register_script(UNLOCK_SCRIPT)
+            cls.extend_script = redis_client.register_script(EXTEND_SCRIPT)
+            scripts_registered = True
 
     def reset(self):
         """
