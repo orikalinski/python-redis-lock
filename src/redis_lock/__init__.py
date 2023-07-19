@@ -8,7 +8,7 @@ from queue import SimpleQueue
 
 from redis import StrictRedis
 
-__version__ = '3.7.0.3'
+__version__ = '3.7.0.4'
 
 from redis_lock.decorators import handle_redis_exception
 
@@ -235,7 +235,7 @@ class Lock(object):
 
     @classmethod
     @handle_redis_exception
-    def register_scripts(cls, redis_client):
+    def register_scripts(cls, redis_client):  # func is called from decorators
         global scripts_registered
         if not scripts_registered:
             cls.unlock_script = redis_client.register_script(UNLOCK_SCRIPT)
