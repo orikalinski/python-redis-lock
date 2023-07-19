@@ -64,13 +64,3 @@ def get_class_from_method(meth):
         if isinstance(cls, type):
             return cls
     return getattr(meth, '__objclass__', None)
-
-
-def wrap_all_class_methods(decorator):
-    def decorate(cls):
-        for attr in cls.__dict__:
-            _obj = getattr(cls, attr)
-            if callable(_obj):
-                setattr(cls, attr, decorator(getattr(cls, attr)))
-        return cls
-    return decorate

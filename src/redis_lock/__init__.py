@@ -10,7 +10,7 @@ from redis import StrictRedis
 
 __version__ = '3.7.0.3'
 
-from redis_lock.decorators import handle_redis_exception, wrap_all_class_methods
+from redis_lock.decorators import handle_redis_exception
 
 loggers = {
     k: getLogger(".".join((__name__, k)))
