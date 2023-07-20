@@ -1,3 +1,4 @@
+import logging
 import sys
 import threading
 import time
@@ -8,24 +9,23 @@ from queue import SimpleQueue
 
 from redis import StrictRedis
 
-__version__ = '3.7.0.4'
+__version__ = '3.7.0.5'
 
 from redis_lock.decorators import handle_redis_exception
 
 loggers = {
-    k: getLogger(".".join((__name__, k)))
+    k: getLogger(".".join(("redis-lock", k)))
     for k in [
         "acquire",
-        "refresh.thread.start",
-        "refresh.thread.stop",
-        "refresh.thread.exit",
         "refresh.thread",
-        "refresh.start",
-        "refresh.shutdown",
-        "refresh.exit",
         "release",
     ]
 }
+
+cornix_handlers = getLogger('cornix').handlers
+for logger in loggers.values():
+    logger.handlers = cornix_handlers
+    logger.setLevel(logging.INFO)
 
 PY3 = sys.version_info[0] == 3
 
@@ -262,18 +262,18 @@ class Lock(object):
         """
         logger = loggers["acquire"]
 
-        logger.debug("Getting %r ...", self._name)
+        logger.debug("Getting lock for %r ...", self._name)
 
         if self.is_locked:
             raise AlreadyAcquired("Already acquired from this Lock instance.")
 
         is_locked = not self.redis_class.conn.set(self._name, self._id, nx=True, ex=self._expire)
         if is_locked:
-            logger.warning("Failed to get %r.", self._name)
+            logger.debug("Failed to get lock on %r.", self._name)
             return False
 
         self.is_locked = True
-        logger.info("Got lock for %r.", self._name)
+        logger.debug("Got lock for %r.", self._name)
         if self.lock_renewal_interval is not None:
             add_lock_extend_queue.put_nowait(self)
         return True
