@@ -9,7 +9,7 @@ from queue import SimpleQueue
 
 from redis import StrictRedis
 
-__version__ = '3.7.0.5'
+__version__ = '3.7.0.6'
 
 from redis_lock.decorators import handle_redis_exception
 

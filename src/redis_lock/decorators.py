@@ -10,7 +10,7 @@ logger = getLogger(__name__)
 
 def check_if_connection_exception(exception):
     return isinstance(exception, (redis.exceptions.ConnectionError, TimeoutError, redis.exceptions.TimeoutError,
-                                  redis.exceptions.ClusterDownError))
+                                  redis.exceptions.ClusterDownError, redis.exceptions.RedisClusterException))
 
 
 def register_scripts(meth, args, e):
